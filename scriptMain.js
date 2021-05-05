@@ -191,6 +191,16 @@ class App {
         duration: 1
       }
     });
+
+    const circle = L.circle(clicked_Workout.coords, {
+      color: 'red',
+      fillColor: '#f03',
+      fillOpacity: 0.5,
+      radius: 500
+    }).addTo(this.#map);
+    setTimeout(() => {
+      this.#map.removeLayer(circle);
+    }, 2000);
   }
 
   _detectEditFormType(type) {                   // detecting edit form type
