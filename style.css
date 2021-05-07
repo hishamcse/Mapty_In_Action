@@ -53,9 +53,13 @@ a:visited {
 }
 
 .logo {
-    height: 5.2rem;
+    height: 5rem;
     align-self: center;
-    margin-bottom: 4rem;
+    margin-bottom: 2.5rem;
+}
+
+.spinner__hidden{
+    visibility: hidden;
 }
 
 .workouts {
@@ -204,15 +208,15 @@ a:visited {
 }
 
 .sortByDist, .sortByDuration {
-    font-size: 150%;
+    font-size: 135%;
     width: 25%;
     height: 15%;
     border-radius: 10px;
-    background-color: var(--color-light--2);
+    background: var(--color-light--2);
 }
 
 .deleteAll {
-    font-size: 150%;
+    font-size: 140%;
     width: 25%;
     height: 15%;
     border-radius: 10px;
@@ -264,4 +268,16 @@ a:visited {
 
 .modal {
     font-size: 150%;
+}
+
+.weather__img{
+    border: thick double #f5f3f4;
+    border-radius: 50%;
+    width: 100px;
+    height: 100px;
+    background-color: #eee;
+}
+
+.img__hidden{
+    visibility: hidden;
 }

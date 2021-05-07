@@ -15,12 +15,18 @@ class App {
 
     form.addEventListener('submit', this._formSubmission.bind(this));                // form submission
     inputType.addEventListener('change', this._toggleField);                          // changing field based on type
+
     containerWorkouts.addEventListener('click', this._moveMarker.bind(this));       // marker on map
+    containerWorkouts.addEventListener('click', this._weatherDetails.bind(this));       // weather details
     containerWorkouts.addEventListener('click', this._editWorkout.bind(this));      // edit a workout
     containerWorkouts.addEventListener('click', this._removeWorkout.bind(this));    // delete a workout
+
     btnContainer.addEventListener('click', this._sortByDistance.bind(this));          // sort by distance
     btnContainer.addEventListener('click', this._sortByDuration.bind(this));          // sort by duration
     deleteAll.addEventListener('click', this.reset);                                // delete All
+
+    document.querySelector('.weather__ok').addEventListener('click', this._weatherReset);
+    document.querySelector('.weather__close').addEventListener('click', this._weatherReset);
   }
 
   _getPosition() {
@@ -34,7 +40,6 @@ class App {
   _renderMap(position) {
     const { latitude } = position.coords;       // or, const latitude = position.coords.latitude;
     const { longitude } = position.coords;      // or, const longitude = position.coords.longitude;
-    // console.log(`https://www.google.com/maps/@${latitude},${longitude},15z`);
 
     const coords = [latitude, longitude];
 
@@ -47,8 +52,6 @@ class App {
     // #map event listener
     this.#map.on('click', this._renderForm.bind(this));
 
-    // we should add it here because we need the map to be loaded before we add marker on it using localstorage.
-    // that's why, we can't put this line of code in the _getLocalStorage() method
     this.#workout_list.forEach(workout => this._renderWorkoutMarker(workout));
   }
 
@@ -80,26 +83,51 @@ class App {
     return inputs.every(inp => inp > 0);
   };
 
+  async _getJSON(url, errMsg = 'something went wrong') {
+    const response = await fetch(url);
+    if (!response.ok)
+      throw new Error(`${response.status}: ${errMsg}`);
+    return await response.json();
+  };
+
   _formSubmission(event) {
     event.preventDefault();
-
     if (!this._check_validation()) {
       new bootstrap.Modal(document.querySelector('.modal')).show();
       return;
     }
 
-    const workout = this.type === 'running' ?
-      new Runner(this.#mapEventCoords, this.dist, this.duration, this.stepOrGain) :
-      new Cyclist(this.#mapEventCoords, this.dist, this.duration, this.stepOrGain);
-    this.#workout_list.push(workout);
+    this._updateAll();
+  }
 
-    this._renderWorkoutMarker(workout);
-    this._updateWorkoutList(workout);
-    this._hideForm();
-    this._setLocalStorage();
+  async _updateAll() {
+    spinner.classList.remove('spinner__hidden');
+    try {
+      const data = await this._getJSON(
+        `https://api.bigdatacloud.net/data/reverse-geocode-with-timezone?latitude=${this.#mapEventCoords[0]}0&longitude=${this.#mapEventCoords[1]}&localityLanguage=en&key=b46fdac9f3d24e7aab358c5177736f16`,
+        'Server failed to respond this request. Please try again later');
+
+      const workout = this.type === 'running' ?
+        new Runner(this.#mapEventCoords, data, this.dist, this.duration, this.stepOrGain) :
+        new Cyclist(this.#mapEventCoords, data, this.dist, this.duration, this.stepOrGain);
+
+      if (this.#workout_list.includes(workout)) throw new Error('Same workout data already exists');
+      this.#workout_list.push(workout);
+
+      this._renderWorkoutMarker(workout);
+      this._updateWorkoutList(workout);
+      this._hideForm();
+      this._setLocalStorage();
+    } catch (err) {
+      new bootstrap.Modal(document.querySelector('.fetch__modal')).show();
+      document.querySelector('.fetch__error').textContent = err.message;
+    } finally {
+      spinner.classList.add('spinner__hidden');
+    }
   }
 
   _renderWorkoutMarker(workout) {
+    const content = `${workout.getDescription()} at ${workout.getAddress()}`;
     L.marker(workout.coords).addTo(this.#map)
       .bindPopup(L.popup(
         {
@@ -109,7 +137,7 @@ class App {
           closeOnClick: false,
           className: `${workout.type}-popup`
         }))
-      .setPopupContent(workout.getDescription())
+      .setPopupContent(content)
       .openPopup();
   }
 
@@ -118,16 +146,22 @@ class App {
    <li class='workout workout--${workout.type}' data-id='${workout.id}'>
       <h2 class='workout__title'>${workout.getDescription()}
             <p>
-              <button type='button' class='btn btn-dark editBtn'>
-              <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' class='bi bi-pencil-square' viewBox='0 0 16 16'>
-              <path d='M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z'/>
-              <path fill-rule='evenodd' d='M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z'/>
-            </svg>
+             <button type='button' class='btn btn-dark detailsBtn' data-bs-toggle='tooltip' data-bs-placement='bottom' title='Weather Details'>
+                <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' class='bi bi-info-circle' viewBox='0 0 16 16'>
+                 <path d='M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z'/>
+                 <path d='m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z'/>
+                </svg>
               </button>&nbsp;&nbsp;
-              <button type='button' class='btn btn-dark deleteBtn'>
-            <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' class='bi bi-archive-fill' viewBox='0 0 16 16'>
-              <path d='M12.643 15C13.979 15 15 13.845 15 12.5V5H1v7.5C1 13.845 2.021 15 3.357 15h9.286zM5.5 7h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1 0-1zM.8 1a.8.8 0 0 0-.8.8V3a.8.8 0 0 0 .8.8h14.4A.8.8 0 0 0 16 3V1.8a.8.8 0 0 0-.8-.8H.8z'/>
-            </svg>
+              <button type='button' class='btn btn-dark editBtn' data-bs-toggle='tooltip' data-bs-placement='bottom' title='Edit workout'>
+                <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' class='bi bi-pencil-square' viewBox='0 0 16 16'>
+                 <path d='M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z'/>
+                 <path fill-rule='evenodd' d='M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z'/>
+                </svg>
+              </button>&nbsp;&nbsp;
+              <button type='button' class='btn btn-dark deleteBtn' data-bs-toggle='tooltip' data-bs-placement='bottom' title='Delete workout'>
+               <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' class='bi bi-archive-fill' viewBox='0 0 16 16'>
+                <path d='M12.643 15C13.979 15 15 13.845 15 12.5V5H1v7.5C1 13.845 2.021 15 3.357 15h9.286zM5.5 7h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1 0-1zM.8 1a.8.8 0 0 0-.8.8V3a.8.8 0 0 0 .8.8h14.4A.8.8 0 0 0 16 3V1.8a.8.8 0 0 0-.8-.8H.8z'/>
+               </svg>
               </button>
             </p>
       </h2>
@@ -196,11 +230,64 @@ class App {
       color: 'red',
       fillColor: '#f03',
       fillOpacity: 0.5,
-      radius: 500
+      radius: 350
     }).addTo(this.#map);
     setTimeout(() => {
       this.#map.removeLayer(circle);
-    }, 2000);
+    }, 2500);
+  }
+
+  _weatherDetails(event) {
+    const locationBtn = event.target.closest('.detailsBtn');
+    if (!locationBtn) return;
+
+    const clicked_Workout = this._workOutFinder(event);
+    if (!clicked_Workout) return;
+
+    new bootstrap.Modal(document.querySelector('.location__modal')).show();
+    modal_spinner.classList.remove('spinner__hidden');
+    retrieve.classList.remove('spinner__hidden');
+    area.textContent = (clicked_Workout.address.city === '' ? '' : clicked_Workout.address.city + ', ') + clicked_Workout.address.locality;
+    country.textContent = clicked_Workout.address.countryName;
+    this._weather(clicked_Workout.coords[0], clicked_Workout.coords[1]);
+  }
+
+  async _weather(lat, lng) {
+    try {
+      const data = await this._getJSON(`https://api.codetabs.com/v1/proxy?quest=https://www.metaweather.com/api/location/search/?lattlong=${lat},${lng}`,
+        'Too much response at a time');
+      const data2 = await this._getJSON(`https://api.codetabs.com/v1/proxy?quest=https://www.metaweather.com/api/location/${data[0].woeid}`);
+
+      this._placeWeatherValues(data2.consolidated_weather[0]);
+    } catch (err) {
+      new bootstrap.Modal(document.querySelector('.fetch__modal')).show();
+      document.querySelector('.fetch__error').textContent = err.message;
+    } finally {
+      modal_spinner.classList.add('spinner__hidden');
+      retrieve.classList.add('spinner__hidden');
+    }
+  }
+
+  _placeWeatherValues(data) {
+    weatherImg.src = `https://www.metaweather.com/static/img/weather/${data.weather_state_abbr}.svg`;
+    weatherImg.classList.remove('img__hidden');
+
+    weatherState.textContent = data.weather_state_name;
+    temperature.textContent = `${data.the_temp.toFixed(2)}℃`;
+    humidity.textContent = `${data.humidity}%`;
+    windSpeed.textContent = `${data.wind_speed.toFixed(2)} mph`;
+    airPressure.textContent = `${data.air_pressure.toFixed(2)} mbar`;
+  }
+
+  _weatherReset() {
+    weatherImg.classList.add('img__hidden');
+    weatherState.textContent = '';
+    temperature.textContent = '';
+    humidity.textContent = '';
+    windSpeed.textContent = '';
+    airPressure.textContent = '';
+    area.textContent = '';
+    country.textContent = '';
   }
 
   _detectEditFormType(type) {                   // detecting edit form type
@@ -305,5 +392,4 @@ class App {
   }
 }
 
-const app = new App();
-// app.reset();                        // all reset and cleaning local storage
+new App();

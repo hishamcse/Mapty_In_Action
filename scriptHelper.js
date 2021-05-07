@@ -11,8 +11,9 @@ class Workout {
   date;
   id;
 
-  constructor(coords, distance, duration) {
+  constructor(coords, address, distance, duration) {
     this.coords = coords;      // [lat,lng]
+    this.address = address;
     this.distance = distance;   // km
     this.duration = duration;   //min
     this.date = this._setDate();
@@ -32,6 +33,10 @@ class Workout {
     return this.description;
   }
 
+  getAddress() {
+    return this.address.locality;
+  }
+
   get id() {
     return this.id;
   }
@@ -44,8 +49,8 @@ class Workout {
 class Runner extends Workout {
   type = 'running';
 
-  constructor(coords, distance, duration, cadence) {
-    super(coords, distance, duration);
+  constructor(coords, address, distance, duration, cadence) {
+    super(coords, address, distance, duration);
     this.cadence = cadence;
     this._setDescription();
     this._calcPace();
@@ -63,8 +68,8 @@ class Runner extends Workout {
 class Cyclist extends Workout {
   type = 'cycling';
 
-  constructor(coords, distance, duration, elevation_gain) {
-    super(coords, distance, duration);
+  constructor(coords, address, distance, duration, elevation_gain) {
+    super(coords, address, distance, duration);
     this.elevation_gain = elevation_gain;
     this._setDescription();
     this._calcSpeed();
@@ -87,7 +92,21 @@ const inputDistance = document.querySelector('.form__input--distance');
 const inputDuration = document.querySelector('.form__input--duration');
 const inputCadence = document.querySelector('.form__input--cadence');
 const inputElevation = document.querySelector('.form__input--elevation');
-const btnContainer = document.querySelector('.container');
+
+const btnContainer = document.querySelector('.btn__container');
 const sortByDist = document.querySelector('.sortByDist');
 const sortByDuration = document.querySelector('.sortByDuration');
 const deleteAll = document.querySelector('.deleteAll');
+
+const spinner = document.querySelector('.spinner__loading');
+const modal_spinner = document.querySelector('.spinner-modal');
+const retrieve = document.querySelector('.retrieve');
+
+const weatherImg = document.querySelector('.weather__img');
+const weatherState = document.querySelector('.state');
+const temperature = document.querySelector('.temp');
+const humidity = document.querySelector('.humidity');
+const windSpeed = document.querySelector('.wind__speed');
+const airPressure = document.querySelector('.pressure');
+const area = document.querySelector('.area');
+const country = document.querySelector('.country');
