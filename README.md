@@ -12,5 +12,7 @@ Currently Implemented Features:
   7. delete all workouts
   8. sorting workouts based on two fields
   9. Storing data in browser (local storage)
+  10. Reverse geocoding (Using API)
+  11. Weather Information (Using API)
  
 My implemented version : https://hishamcse.github.io/Mapty_In_Action/
